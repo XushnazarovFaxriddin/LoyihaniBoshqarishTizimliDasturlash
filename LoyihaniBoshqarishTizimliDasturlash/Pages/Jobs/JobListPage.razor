@@ -1,0 +1,80 @@
+﻿@page "/job/list"
+@inject AppDbContext _appDbContext
+@inject IJSRuntime _jsRuntime
+@inject NavigationManager _navm
+
+<PageTitle>JobListPage</PageTitle>
+
+<style>
+    table, tr, td, th {
+        border: 1px solid black;
+        border-collapse: collapse;
+    }
+
+    td {
+        text-align: center;
+    }
+</style>
+
+<a class="btn btn-primary" href="/job/add">Add job</a>
+<hr />
+
+@if (Jobs is null)
+{
+    <h3>Loading job list ...</h3>
+}
+else
+{
+    <table class="table btn-light">
+        <tr>
+            <th scope="col">Number</th>
+            <th scope="col">Name</th>
+            <th scope="col">Created At</th>
+            <th scope="col">Assignments count</th>
+            <th scope="col">Description</th>
+            <th scope="col">Edit</th>
+            <th scope="col">Delete</th>
+        </tr>
+        @{
+            int i = 1;
+            foreach (var job in Jobs)
+            {
+                <tr>
+                    <td>@(i++)</td>
+                    <td>@job.Name</td>
+                    <td>@job.CreatedAt.ToLongDateString()</td>
+                    <td><a href="/assignment/list/job/@job.Id">@job.Assignments.Where(x => x.Status ==AssignmentStatus.New || x.Status ==AssignmentStatus.InProgress).Count()/@job.Assignments.Count</a></td>
+                    <td>@job.Description</td>
+                    <td><a class="btn btn-outline-warning" href="/job/edit/@job.Id">edit</a></td>
+                    <td><button class="btn btn-outline-danger" @onclick="@(() => Delete(job.Id))">delete</button></td>
+                    
+                </tr>
+            }
+        }
+    </table>
+}
+
+@code {
+    List<Job> Jobs = null;
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Jobs = _appDbContext.Jobs
+            .Include(x => x.Assignments)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToList();
+        StateHasChanged();
+    }
+    async void Delete(Guid jobId)
+    {
+        bool res = await _jsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (res)
+        {
+            _appDbContext.Jobs
+             .Where(x => x.Id == jobId)
+             .ExecuteDelete();
+            _appDbContext.SaveChanges();
+            OnInitialized();
+        }
+    }
+}

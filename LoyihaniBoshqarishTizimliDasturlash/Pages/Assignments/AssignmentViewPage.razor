@@ -1,0 +1,91 @@
+﻿@page "/assignment/view/{AssignmentId:guid}"
+@inject AppDbContext _appDbContext
+@inject NavigationManager _navm
+
+<PageTitle>AssignmentViewPage</PageTitle>
+
+@if (Assignment is null)
+{
+    <h3>Not data ...</h3>
+}
+else
+{
+    <div class="container">
+        <a class="btn btn-warning" href="/assignment/edit/@Assignment.Id">Edit</a>
+        <h1>Assignment Details</h1>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="id">ID:</label>
+                    <p id="id">@Assignment.Id</p>
+                </div>
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <p id="name">@Assignment.Name</p>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <p id="description">@Assignment.Description</p>
+                </div>
+                <div class="form-group">
+                    <label for="createdAt">Created At:</label>
+                    <p id="createdAt">@Assignment.CreatedAt</p>
+                </div>
+                <div class="form-group">
+                    <label for="updatedAt">Updated At:</label>
+                    <p id="updatedAt">@Assignment.UpdatedAt</p>
+                </div>
+                <div class="form-group">
+                    <label for="Status">Status:</label>
+                    <p id="Status">@Assignment.Status.ToString()</p>
+                </div>
+                <div class="form-group">
+                    <label for="StartDate">Start date:</label>
+                    <p id="StartDate">@Assignment.StartDate</p>
+                </div>
+                <div class="form-group">
+                    <label for="EndDate">Dedline:</label>
+                    <p id="EndDate">@Assignment.EndDate</p>
+                </div>
+                <div class="form-group">
+                    <label for="EndDate">Dedline:</label>
+                    <p id="EndDate">@Assignment.EndDate</p>
+                </div>
+                <div class="form-group">
+                    <label for="Job">Job:</label>
+                    <a id="Job" href="/assignment/list/job/@Assignment.JobId">@Assignment.Job?.Name</a>
+                </div>
+                <div class="form-group">
+                    <label for="Developer">Developer:</label>
+                    <a id="Developer" href="/assignment/list/developer/@Assignment.DeveloperId">@Assignment.Developer?.Name</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                @foreach (var image in Assignment.Images)
+                {
+                    <div class="form-group">
+                        <label for="base64">@image.Id</label>
+                        <img id="base64" src="data:image/@image.Type;base64,@image.Base64" width="@(image.Width%600)" height="@(image.Height%400)" alt="Image" class="img-fluid">
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid? AssignmentId { get; set; }
+    Assignment? Assignment = null;
+    protected override void OnInitialized()
+    {
+        if (AssignmentId != null)
+        {
+            Assignment = _appDbContext.Assignments
+                .Include(x => x.Developer)
+                .Include(x => x.Job)
+                .Include(x => x.Images)
+                .FirstOrDefault(x => x.Id == AssignmentId);
+        }
+    }
+}

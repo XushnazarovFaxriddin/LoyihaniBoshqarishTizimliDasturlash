@@ -1,0 +1,55 @@
+﻿@page "/job/edit/{JobId:guid}"
+@inject AppDbContext _appDbContext
+@inject IJSRuntime _jsRuntime
+@inject NavigationManager _navm
+
+<PageTitle>EditJobPage</PageTitle>
+
+@if(Job is null)
+{
+    <h3 style="color:red;">Not data ...</h3>
+}
+else
+{
+    <div class="container">
+        <h1>Job Details</h1>
+        <div>
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <InputText class="form-control" id="name" name="name" @bind-Value="Job.Name" />
+            </div>
+            <div class="form-group">
+                <label for="description">Description:</label>
+                <InputTextArea class="form-control" id="description" name="description" @bind-Value="Job.Description" />
+            </div>
+            <button @onclick="Save" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid? JobId { get; set; }
+    Job? Job = null;
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if (JobId.HasValue)
+        {
+            Job = _appDbContext.Jobs
+                //.Include(x => x.Assignments)
+                .FirstOrDefault(x => x.Id == JobId.Value);
+        }
+    }
+    void Save()
+    {
+        if (string.IsNullOrEmpty(Job?.Name))
+        {
+            return;
+        }
+        Job.UpdatedAt = DateTime.Now;
+        _appDbContext.Jobs.Update(Job);
+        _appDbContext.SaveChanges();
+        _navm.NavigateTo("/job/list");
+    }
+}

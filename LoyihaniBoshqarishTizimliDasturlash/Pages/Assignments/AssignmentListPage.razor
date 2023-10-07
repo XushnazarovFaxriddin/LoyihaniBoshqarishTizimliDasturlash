@@ -1,0 +1,143 @@
+﻿@page "/assignment/list"
+@page "/assignment/list/developer/{DeveloperId:guid}"
+@page "/assignment/list/job/{JobId:guid}"
+@inject AppDbContext _appDbContext
+@inject IJSRuntime _jsRuntime
+
+<PageTitle>AssignmentListPage</PageTitle>
+<style>
+    table, tr, th, td {
+        border: 1px solid;
+    }
+
+    td {
+        text-align: center;
+    }
+</style>
+
+<a class="btn btn-primary" href="/assignment/add">Add assignment</a>
+<hr />
+@if (Assignments is null)
+{
+    <h3>Loading or empty developer type list ...</h3>
+}
+else
+{
+    <table class="table btn-light">
+        <tr>
+            <th>Number</th>
+            <th>Name</th>
+            <th>Job</th>
+            <th>Developer</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Status</th>
+            <th>Edit</th>
+            <th>Delete</th>
+        </tr>
+        @{
+            int i = 1;
+            foreach (var assignment in Assignments)
+            {
+                string? type = assignment.Developer?.DeveloperType?.Name;
+                if (type is not null)
+                    type = '(' + type + ')';
+                <tr>
+                    <td>@(i++)</td>
+                    <td><a href="/assignment/view/@assignment.Id">@assignment.Name @type</a></td>
+                    <td>@assignment.Job?.Name</td>
+                    <td>@assignment.Developer?.Name</td>
+                    <td>@assignment.StartDate.ToShortDateString()</td>
+                    <td>@assignment.EndDate?.ToShortDateString()</td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-@GetStatusColor(assignment.Status) dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                @assignment.Status.ToString()
+                            </button>
+                            <ul class="dropdown-menu">
+                                @foreach (var status in Statuses)
+                                {
+                                    <li><button @onclick="@((e) => ChangeStatus(assignment.Id, status))" class="dropdown-item" type="button">@status.ToString()</button></li>
+                                }
+                                <li><button class="dropdown-item" type="button">Another action</button></li>
+                                <li><button class="dropdown-item" type="button">Something else here</button></li>
+                            </ul>
+                        </div>
+                    </td>
+                    <td><a class="btn btn-outline-warning" href="/assignment/edit/@assignment.Id">edit</a></td>
+                    <td><a class="btn btn-outline-danger" @onclick="()=>DeleteAsync(assignment.Id)">delete</a></td>
+                </tr>
+            }
+        }
+    </table>
+}
+
+@code {
+    [Parameter]
+    public Guid? DeveloperId { get; set; }
+    [Parameter]
+    public Guid? JobId { get; set; }
+    List<Assignment> Assignments = null;
+
+    List<AssignmentStatus> Statuses = Enum.GetValues(typeof(AssignmentStatus)).Cast<AssignmentStatus>().ToList();
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        var assg = _appDbContext.Assignments
+            .AsQueryable();
+        if (DeveloperId is not null)
+            assg = assg.Where(x => x.DeveloperId == DeveloperId);
+        if (JobId is not null)
+            assg = assg.Where(x => x.JobId == JobId);
+        assg = assg.Include(x => x.Developer)
+            .Include(x => x.Job);
+        Assignments = assg.ToList();
+
+        StateHasChanged();
+    }
+
+    public void ChangeStatus(Guid id, AssignmentStatus status)
+    {
+        if (id != Guid.Empty)
+        {
+            var assg = _appDbContext.Assignments
+                .Where(x => x.Id == id)
+                .FirstOrDefault();
+            if (assg is not null)
+            {
+                assg.Status = status;
+                _appDbContext.SaveChanges();
+            }
+        }
+        StateHasChanged();
+    }
+
+    async void DeleteAsync(Guid id)
+    {
+        bool res = await _jsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (!res)
+            return;
+        _appDbContext.Assignments
+            .Where(x => x.Id == id)
+            .ExecuteDelete();
+
+        OnInitialized();
+    }
+
+    string GetStatusColor(AssignmentStatus status)
+    {
+        switch (status)
+        {
+            case AssignmentStatus.New:
+                return "primary";
+            case AssignmentStatus.InProgress:
+                return "warning";
+            case AssignmentStatus.Completed:
+                return "success";
+            case AssignmentStatus.Canceled:
+                return "danger";
+            default:
+                return "secondary";
+        }
+    }
+}

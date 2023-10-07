@@ -1,0 +1,42 @@
+﻿@page "/developer/add"
+@inject AppDbContext _appDbContext
+@inject NavigationManager _navm
+
+<PageTitle>AddDeveloper</PageTitle>
+
+<div style="display:flex; flex-direction:column">
+    <label>Firstname</label>
+    <InputText @bind-Value="Developer.FirstName" DisplayName="Type name" />
+    <br />
+    <label>MiddleName</label>
+    <InputText @bind-Value="Developer.MiddleName" DisplayName="Type name" />
+    <br />
+    <label>LastName</label>
+    <InputText @bind-Value="Developer.LastName" DisplayName="Type name" />
+    <br />
+    <label>Type</label>
+    <InputSelect class="form-select" @bind-Value="Developer.DeveloperTypeId">
+        @foreach (var type in Types)
+        {
+            <option value="@type.Id">@type.Name</option>
+        }
+    </InputSelect>
+    <br />
+    <button @onclick="Add">Add</button>
+</div>
+
+@code {
+    Developer Developer = new();
+    List<DeveloperType> Types = null;
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Types = _appDbContext.DeveloperTypes.ToList();
+    }
+    void Add()
+    {
+        _appDbContext.Developers.Add(this.Developer);
+        _appDbContext.SaveChanges();
+        _navm.NavigateTo("/developer/list");
+    }
+}

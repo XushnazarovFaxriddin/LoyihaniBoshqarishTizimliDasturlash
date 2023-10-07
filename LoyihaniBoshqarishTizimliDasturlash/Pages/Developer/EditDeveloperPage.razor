@@ -1,0 +1,64 @@
+﻿@page "/developer/edit/{DeveloperId:guid}"
+@inject AppDbContext _appDbContext
+@inject NavigationManager _navm
+
+<PageTitle>EditDeveloper</PageTitle>
+@if (Developer is null)
+{
+    <h3 style="color:red">Not data</h3>
+}
+else
+{
+    <div style="display:flex; flex-direction:column">
+        <label>Firstname</label>
+        <InputText @bind-Value="Developer.FirstName" DisplayName="Type name" />
+        <br />
+        <label>MiddleName</label>
+        <InputText @bind-Value="Developer.MiddleName" DisplayName="Type name" />
+        <br />
+        <label>LastName</label>
+        <InputText @bind-Value="Developer.LastName" DisplayName="Type name" />
+        <br />
+        <label>Type</label>
+        <InputSelect class="form-select" @bind-Value="Developer.DeveloperTypeId">
+            @foreach (var type in Types)
+            {
+                if (Developer.DeveloperTypeId == type.Id)
+                {
+                    <option selected value="@type.Id">@type.Name</option>
+                }
+                else
+                {
+                    <option value="@type.Id">@type.Name</option>
+                }
+            }
+        </InputSelect>
+        <br />
+        <button @onclick="Edit">Edit</button>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid? DeveloperId { get; set; }
+
+    Developer? Developer = null;
+    List<DeveloperType> Types = null;
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Developer = _appDbContext.Developers
+            .Where(x => x.Id == DeveloperId)
+            .FirstOrDefault();
+        Types = _appDbContext.DeveloperTypes.ToList();
+    }
+    void Edit()
+    {
+        if(Developer is not null)
+        {
+            _appDbContext.Developers.Update(Developer);
+            _appDbContext.SaveChanges();
+        }
+        _navm.NavigateTo("/developer/list");
+    }
+}

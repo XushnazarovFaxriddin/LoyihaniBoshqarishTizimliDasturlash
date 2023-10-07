@@ -1,0 +1,93 @@
+﻿@page "/assignment/add"
+@inject AppDbContext _appDbContext
+@inject NavigationManager _navm
+
+<PageTitle>AddAssignmentPage</PageTitle>
+
+<div style="display:flex; flex-direction:column">
+    <label>Name*</label>
+    <InputText @bind-Value="Assignment.Name" DisplayName="Name" />
+    <br />
+    <label>Description*</label>
+    <InputTextArea @bind-Value="Assignment.Description" DisplayName="Description" />
+    <br />
+    <label>Start date*</label>
+    <InputDate @bind-Value="Assignment.StartDate" DisplayName="Start date" />
+    <br />
+    <label>Deadline</label>
+    <InputDate @onchange="StateHasChanged" @bind-Value="Assignment.EndDate" DisplayName="Deadline" />
+    <br />
+    <label>Job</label>
+    <InputSelect class="form-select" @bind-Value="Assignment.JobId">
+        @foreach (var job in Jobs)
+        {
+            <option value="@job.Id">@job.Name</option>
+        }
+    </InputSelect>
+    <br />
+    <label>Developer</label>
+    <InputSelect class="form-select" @bind-Value="Assignment.DeveloperId">
+        @foreach (var developer in Developers)
+        {
+            var disable = CheckDeveloperFree(@developer.Id);
+            string? start = "undefined", end = "undefined";
+            if (disable)
+            {
+                var assg = developer.Assignments.AsEnumerable();
+                assg = assg.Where(s => s.Status == AssignmentStatus.New || s.Status == AssignmentStatus.InProgress);
+                DateTime? startDate = null, endDate = null;
+                if (assg.Count() > 0)
+                {
+                    startDate = assg.Min(x => x.StartDate);
+                    endDate = assg.Max(x => x.EndDate);
+                    start = startDate?.ToString("dd.mm.yyyy") ?? "undefined";
+                    end = endDate.HasValue ? endDate?.ToString("dd.mm.yyyy") : "undefined";
+                }
+            }
+            <option disabled="@disable" value="@developer.Id">@developer.Name => @developer.DeveloperType?.Name @(disable ? $"=> [{start} - {end}]" : "")</option>
+        }
+    </InputSelect>
+    <br />
+    <button @onclick="Add">Add</button>
+</div>
+
+@code {
+    Assignment Assignment = new Assignment();
+    List<Developer> Developers = null;
+    List<Job> Jobs = null;
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Developers = _appDbContext.Developers
+            .Include(x => x.DeveloperType)
+            .Include(x => x.Assignments)
+            .OrderByDescending(x => x.Assignments.Count)
+                .ThenBy(x => x.FirstName)
+                .ThenBy(x => x.LastName)
+            .ToList();
+        Jobs = _appDbContext.Jobs
+            .OrderByDescending(x => x.CreatedAt)
+            .ToList();
+        Assignment.StartDate = DateTime.Now;
+    }
+    bool CheckDeveloperFree(Guid developerId)
+    {
+        var assg = _appDbContext.Assignments.AsQueryable();
+        if (Assignment.JobId != Guid.Empty)
+        {
+            assg = assg.Where(x => x.JobId == Assignment.JobId);
+        }
+        var res = assg.Any(x => x.DeveloperId == developerId && x.Status != AssignmentStatus.Canceled && x.Status != AssignmentStatus.Completed);
+        if (!res && Assignment.StartDate > DateTime.Now)
+        {
+            res = assg.Any(x => x.DeveloperId == developerId && x.EndDate < Assignment.StartDate);
+        }
+        return res;
+    }
+    void Add()
+    {
+        _appDbContext.Assignments.Add(this.Assignment);
+        _appDbContext.SaveChanges();
+        _navm.NavigateTo("/assignment/list");
+    }
+}

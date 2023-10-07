@@ -1,0 +1,82 @@
+﻿@page "/developer/list"
+@page "/developer/list/{DeveloperTypeId:guid}"
+@inject AppDbContext _appDbContext
+@inject IJSRuntime _jsRuntime
+
+<PageTitle>DeveloperListPage</PageTitle>
+
+
+<style>
+    table, tr, th, td {
+        border: 1px solid;
+    }
+
+    td {
+        text-align: center;
+    }
+</style>
+
+<a class="btn btn-primary" href="/developer/add">Add developer</a>
+<hr />
+@if (Developers is null)
+{
+    <h3>Loading developer type list ...</h3>
+    return;
+}
+<table class="table btn-light">
+    <tr>
+        <th scope="col">Number</th>
+        <th scope="col">Name</th>
+        <th scope="col">Type</th>
+        <th scope="col">Assigments count</th>
+        <th scope="col">Edit</th>
+        <th scope="col">Delete</th>
+    </tr>
+    @{
+        int i = 1;
+        foreach (var developer in Developers)
+        {
+            <tr>
+                <td scope="row">@(i++)</td>
+                <td scope="row">@developer.Name</td>
+                <td scope="row">@developer.DeveloperType.Name</td>
+                <td ><a href="/assignment/list/developer/@developer.Id">@developer.Assignments.Where(x => x.Status ==AssignmentStatus.New || x.Status ==AssignmentStatus.InProgress).Count()/@developer.Assignments.Count</a></td>
+                <td scope="row"><a class="btn btn-outline-warning" href="/developer/edit/@developer.Id">edit</a></td>
+                <td scope="row"><a class="btn btn-outline-danger" @onclick="(e)=>DeleteAsync(developer.Id)">delete</a></td>
+            </tr>
+        }
+    }
+</table>
+
+
+@code {
+    [Parameter]
+    public Guid? DeveloperTypeId { get; set; }
+    protected override void OnInitialized()
+    {
+        var query = _appDbContext.Developers.AsQueryable();
+        if (DeveloperTypeId.HasValue)
+            query = query.Where(x => x.DeveloperTypeId == DeveloperTypeId.Value);
+        Developers = query
+            .Include(x => x.DeveloperType)
+            .Include(x => x.Assignments)
+            .OrderByDescending(x => x.Assignments.Count)
+            .ThenBy(x => x.FirstName)
+            .ToList();
+        StateHasChanged();
+    }
+
+    List<Developer> Developers = null;
+     
+    async void DeleteAsync(Guid id)
+    {
+        bool res = await _jsRuntime.InvokeAsync<bool>("confirm", "Haqiqatdan ham ushbu dasturchini o'chirmoqchimisiz?");
+        if (!res)
+            return;
+        _appDbContext.Developers
+            .Where(x => x.Id == id)
+            .ExecuteDelete();
+        await _appDbContext.SaveChangesAsync();
+        OnInitialized();
+    }
+}

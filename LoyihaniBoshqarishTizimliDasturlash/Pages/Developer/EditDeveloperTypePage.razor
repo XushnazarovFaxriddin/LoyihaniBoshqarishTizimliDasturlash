@@ -1,0 +1,61 @@
+﻿@page "/developer/type/edit/{DeveloperTypeId}"
+@inject AppDbContext _appDbContext
+@inject NavigationManager _navm
+
+<PageTitle>EditDeveloperTypePage</PageTitle>
+@if (_developerType is null)
+{
+    <h3 style="color:red">Not data</h3>
+}
+else
+{
+    <div style="display:flex; flex-direction:column">
+        <label>Type name</label>
+        <InputText @bind-Value="_developerType.Name" DisplayName="Type name" />
+        <br />
+        Type description
+        <InputTextArea @bind-Value="_developerType.Description" DisplayName="Type description" />
+        <br />
+        <button @onclick="Edit">Edit</button>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public string? DeveloperTypeId
+    {
+        get => _developerTypeId?.ToString();
+        set
+        {
+            if (value is null) return;
+            try
+            {
+                _developerTypeId = Guid.Parse(value);
+            }
+            catch
+            {
+                _developerTypeId = null;
+            }
+        }
+    }
+    private Guid? _developerTypeId = null;
+
+    DeveloperType? _developerType = null;
+    protected override async Task OnInitializedAsync()
+    {
+        _developerType = await _appDbContext.DeveloperTypes
+            .FirstOrDefaultAsync(x => x.Id == _developerTypeId);
+        await base.OnInitializedAsync();
+    }
+
+    void Edit()
+    {
+        if (_developerType is not null)
+        {
+            _appDbContext.DeveloperTypes.Update(_developerType);
+            _appDbContext.SaveChanges();
+            _navm.NavigateTo("/developer/type/list");
+        }
+    }
+}

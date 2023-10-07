@@ -1,0 +1,28 @@
+﻿@page "/developer/type/add"
+@inject AppDbContext _appDbContext
+@inject NavigationManager _navm
+
+<PageTitle>AddDeveloperTypePage</PageTitle>
+
+<div style="display:flex; flex-direction:column">
+    <label>Type name</label>
+    <InputText @bind-Value="developerType.Name" DisplayName="Type name" />
+    <br />
+    Type description
+    <InputTextArea @bind-Value="developerType.Description" DisplayName="Type description" />
+    <br />
+    <button @onclick="Add">Add</button>
+</div>
+
+@code {
+    private DeveloperType developerType = new();
+    void Add()
+    {
+        if (developerType.Name.Length > 1)
+        {
+            _appDbContext.DeveloperTypes.Add(this.developerType);
+            _appDbContext.SaveChanges();
+        }
+        _navm.NavigateTo("/developer/type/list");
+    }
+}
